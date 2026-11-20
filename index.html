@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Global Copper Mine Land–Carbon Database</title>
+  <link rel="stylesheet" href="vendor/leaflet.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%23101614' width='32' height='32' rx='8'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23e09a55'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%232fbf86'/%3E%3C/svg%3E" />
+  <style>
+    :root {
+      --bg: #101614;
+      --text: #f4f0e6;
+      --muted: #a3b0a6;
+      --line: rgba(244, 240, 230, 0.12);
+      --copper: #e09a55;
+      --copper-deep: #b86a32;
+      --forest: #2fbf86;
+      --ink: #1a120c;
+      --card: rgba(18, 26, 23, 0.94);
+      --shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-weight: 400;
+    }
+
+    button, input, select { font: inherit; color: inherit; }
+
+    button { cursor: pointer; }
+
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible {
+      outline: 2px solid var(--copper);
+      outline-offset: 2px;
+    }
+
+    .app {
+      height: 100vh;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr);
+    }
+
+    .panel {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 22px 18px 12px;
+      background:
+        radial-gradient(900px 320px at 0% -10%, rgba(224, 154, 85, 0.18), transparent 60%),
+        linear-gradient(180deg, #17211d 0%, #101614 42%, #0d1210 100%);
+      border-right: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--copper);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: Georgia, "Segoe UI", serif;
+      font-size: 26px;
+      font-weight: 650;
+      letter-spacing: -0.03em;
+      line-height: 1.25;
+    }
+
+    .subtitle {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 12.5px;
+      letter-spacing: 0.01em;
+    }
+
+    .lede {
+      margin: 12px 0 0;
+      color: #d5ddd6;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .stat {
+      padding: 9px 10px 8px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .stat b {
+      display: block;
+      font-family: Georgia, "Segoe UI", serif;
+      font-size: 22px;
+      font-weight: 560;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat span {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .split {
+      margin-top: 12px;
+    }
+
+    .split-track {
+      display: flex;
+      height: 8px;
+      overflow: hidden;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .split-track i {
+      display: block;
+      height: 100%;
+    }
+
+    .split-track .forest { background: var(--forest); }
+    .split-track .bare { background: var(--copper); }
+
+    .split-label {
+      display: flex;
+      justify-content: space-between;
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .controls {
+      display: grid;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .search, .selects select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #0e1613;
+      padding: 9px 11px;
+    }
+
+    .selects {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 8px;
+    }
+
+    .segments {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      padding: 4px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.22);
+    }
+
+    .segments button {
+      border: 0;
+      border-radius: 9px;
+      background: transparent;
+      color: var(--muted);
+      padding: 7px 4px;
+      font-size: 12.5px;
+    }
+
+    .segments button.is-active {
+      background: #24302b;
+      color: var(--text);
+    }
+
+    .list-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 14px 2px 6px;
+    }
+
+    .list-head strong { font-size: 13px; }
+
+    .list-head span,
+    .text-btn {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .text-btn {
+      border: 0;
+      background: transparent;
+      padding: 0;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .text-btn:hover { color: var(--text); }
+
+    .list {
+      min-height: 0;
+      flex: 1;
+      overflow: auto;
+      margin: 0 -6px;
+      padding: 0 6px 8px;
+    }
+
+    .mine {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 14px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      text-align: left;
+      border: 0;
+      border-bottom: 1px solid rgba(244, 240, 230, 0.06);
+      background: transparent;
+      padding: 9px 8px;
+      border-radius: 10px;
+    }
+
+    .mine:hover { background: rgba(244, 240, 230, 0.04); }
+
+    .mine.is-active { background: rgba(224, 154, 85, 0.14); }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05);
+    }
+
+    .dot.forest { background: var(--forest); }
+    .dot.bare { background: var(--copper); }
+
+    .mine-name {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mine-meta {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .mine-stat {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .mine-stat b {
+      display: block;
+      font-family: Georgia, "Segoe UI", serif;
+      font-size: 14px;
+      font-weight: 560;
+    }
+
+    .mine-stat small {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .empty {
+      margin: 28px 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .glossary {
+      margin: 4px 0 0;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 11.5px;
+      line-height: 1.55;
+    }
+
+    .stage {
+      position: relative;
+      height: 100%;
+      min-width: 0;
+      min-height: 0;
+      background: #0b100e;
+    }
+
+    #view {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .leaflet-container { background: #0b100e; }
+
+    .leaflet-top.leaflet-left {
+      top: 0;
+      left: auto;
+      right: 0;
+    }
+
+    .leaflet-bar a {
+      background: #121a17;
+      color: #f4f0e6;
+      border-bottom-color: rgba(244, 240, 230, 0.12);
+    }
+
+    .leaflet-bar a:hover { background: #1c2823; }
+
+    .leaflet-control-attribution {
+      background: rgba(16, 22, 20, 0.72);
+      color: #a3b0a6;
+    }
+
+    .leaflet-control-attribution a { color: #d7c2a4; }
+
+    .stage-shade {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      box-shadow: inset 20px 0 28px rgba(6, 10, 8, 0.18);
+      z-index: 1;
+    }
+
+    .float {
+      position: absolute;
+      z-index: 2;
+    }
+
+    .basemaps, .legend, .hint, .detail {
+      background: var(--card);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .basemaps {
+      top: 14px;
+      left: 14px;
+      display: flex;
+      gap: 4px;
+      padding: 4px;
+      border-radius: 999px;
+    }
+
+    .basemaps button {
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      padding: 7px 12px;
+      font-size: 13px;
+    }
+
+    .basemaps button.is-active {
+      background: var(--copper);
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .hint {
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: min(460px, calc(100% - 280px));
+      padding: 8px 12px;
+      border-radius: 999px;
+      color: #d9e2db;
+      font-size: 12.5px;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .legend {
+      left: 14px;
+      bottom: 52px;
+      width: 210px;
+      padding: 12px 12px 10px;
+      border-radius: 16px;
+    }
+
+    .legend p {
+      margin: 0 0 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .legend button {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      padding: 5px 4px;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    .legend button.is-active { background: rgba(224, 154, 85, 0.14); }
+
+    .sizes {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .sizes i {
+      display: inline-block;
+      border-radius: 50%;
+      background: rgba(244, 240, 230, 0.82);
+    }
+
+    .detail {
+      top: 68px;
+      left: 14px;
+      width: min(344px, calc(100% - 28px));
+      max-height: calc(100% - 86px);
+      overflow: auto;
+      padding: 16px 16px 14px;
+      border-radius: 18px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(8px);
+      transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+    }
+
+    .detail.is-open {
+      opacity: 1;
+      visibility: visible;
+      transform: none;
+      z-index: 1100;
+    }
+
+    .stage.has-selection .legend {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .detail-kicker {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .detail-kicker span { color: var(--muted); font-size: 12px; }
+
+    .chip {
+      border-radius: 99px;
+      padding: 3px 8px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .chip.forest { background: rgba(47, 191, 134, 0.16); color: #8ee0b8; }
+    .chip.bare { background: rgba(224, 154, 85, 0.16); color: #f0c08a; }
+
+    .detail h2 {
+      margin: 8px 0 0;
+      font-family: Georgia, "Segoe UI", serif;
+      font-size: 26px;
+      line-height: 1.25;
+      letter-spacing: -0.03em;
+    }
+
+    .place, .coord {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .coord {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .meter { margin-top: 14px; }
+
+    .meter-top {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .meter-top strong {
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .meter-track {
+      height: 7px;
+      margin-top: 6px;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+    }
+
+    .meter-track i {
+      display: block;
+      height: 100%;
+      width: 0;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #1e7a52, var(--forest));
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 14px 0 0;
+    }
+
+    .metrics div {
+      padding: 9px 10px 8px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    .metrics dt {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .metrics dd {
+      margin: 4px 0 0;
+      font-family: Georgia, "Segoe UI", serif;
+      font-size: 18px;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .metrics small {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-family: "Segoe UI", system-ui, sans-serif;
+      font-size: 11px;
+      letter-spacing: 0;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1.4fr 0.8fr;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .actions button {
+      border-radius: 11px;
+      padding: 10px 8px;
+      font-size: 13.5px;
+      font-weight: 700;
+    }
+
+    .primary {
+      border: 0;
+      background: var(--copper);
+      color: var(--ink);
+    }
+
+    .primary:disabled { opacity: 0.55; cursor: wait; }
+
+    .ghost {
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--text);
+    }
+
+    .note {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 11.5px;
+      line-height: 1.5;
+    }
+
+    .veil {
+      position: absolute;
+      inset: 0;
+      z-index: 6;
+      display: grid;
+      place-items: center;
+      background: #101614;
+      transition: opacity 0.35s ease;
+    }
+
+    .veil.is-gone { opacity: 0; pointer-events: none; }
+
+    .veil-card { text-align: center; }
+
+    .veil-card strong {
+      display: block;
+      font-family: Georgia, "Segoe UI", serif;
+      font-size: 22px;
+      font-weight: 650;
+    }
+
+    .veil-card span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .spinner {
+      width: 28px;
+      height: 28px;
+      margin: 0 auto 14px;
+      border-radius: 50%;
+      border: 2px solid rgba(224, 154, 85, 0.25);
+      border-top-color: var(--copper);
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .esri-view { --esri-view-outline: none; }
+
+    .esri-ui-corner .esri-component {
+      box-shadow: var(--shadow);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .detail, .veil { transition: none; }
+      .spinner { animation: none; }
+    }
+
+    @media (max-width: 960px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: 52vh minmax(0, 1fr);
+        overflow: hidden;
+      }
+
+      .stage { order: 1; }
+      .panel { order: 2; border-right: 0; border-top: 1px solid var(--line); }
+      .lede, .glossary, .hint, .legend { display: none; }
+
+      .detail {
+        position: fixed;
+        top: auto;
+        bottom: 8px;
+        left: 8px;
+        right: 8px;
+        width: auto;
+        max-height: 44vh;
+      }
+
+      .detail h2 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="panel">
+      <p class="eyebrow">COPPER · LAND CARBON</p>
+      <h1>Global copper mine land–carbon database</h1>
+      <p class="lede">Select a mine to fly to the site and open Esri satellite imagery with the record from the table.</p>
+
+      <section class="stats" aria-label="Filtered totals">
+        <div class="stat"><b id="stat-mines">–</b><span>Mines</span></div>
+        <div class="stat"><b id="stat-countries">–</b><span>Countries</span></div>
+        <div class="stat"><b id="stat-footprint">–</b><span id="stat-footprint-unit">ha footprint</span></div>
+        <div class="stat"><b id="stat-bcl">–</b><span id="stat-bcl-unit">t C estimated loss</span></div>
+      </section>
+
+      <div class="split">
+        <div class="split-track" aria-hidden="true">
+          <i class="forest" id="split-forest"></i>
+          <i class="bare" id="split-bare"></i>
+        </div>
+        <div class="split-label">
+          <span id="label-forest">Forest</span>
+          <span id="label-bare">Non-forest</span>
+        </div>
+      </div>
+
+      <div class="controls">
+        <input class="search" id="search" type="search" placeholder="Search mine, country, or ID" autocomplete="off" />
+        <div class="selects">
+          <select id="country" aria-label="Country"></select>
+          <select id="sort" aria-label="Sort">
+            <option value="bcl">Loss</option>
+            <option value="footprint">Area</option>
+            <option value="forest">Forest</option>
+            <option value="name">Name</option>
+          </select>
+        </div>
+        <div class="segments" role="group" aria-label="Forest context">
+          <button type="button" data-context="" class="is-active">All</button>
+          <button type="button" data-context="Forest-context">Forest</button>
+          <button type="button" data-context="Non-forest-context">Non-forest</button>
+        </div>
+      </div>
+
+      <div class="list-head">
+        <strong id="list-count">Mines</strong>
+        <button class="text-btn" id="frame-btn" type="button">Zoom to these mines</button>
+      </div>
+      <div class="list" id="list" role="list"></div>
+      <p class="glossary">Columns follow the source table. Footprint is in ha. Background BCD is t C/ha. Estimated BCL is t C. BCLI is t C per t Cu. Dot size is footprint. Source: Global_Copper_Mine_Land-Carbon_Database.xlsx.</p>
+    </aside>
+
+    <main class="stage">
+      <div id="view"></div>
+      <div class="stage-shade"></div>
+      <div class="basemaps float" role="group" aria-label="Basemap">
+        <button type="button" data-basemap="dark" class="is-active">Canvas</button>
+        <button type="button" data-basemap="imagery">Imagery</button>
+        <button type="button" data-basemap="topo">Terrain</button>
+      </div>
+      <p class="hint float" id="hint">Select a mine to fly there and open satellite imagery.</p>
+      <aside class="legend float" aria-label="Legend">
+        <p>Color is forest context. Size is mining footprint.</p>
+        <button type="button" data-context="Forest-context" id="legend-forest"><i class="dot forest"></i><span>Forest context</span></button>
+        <button type="button" data-context="Non-forest-context" id="legend-bare"><i class="dot bare"></i><span>Non-forest context</span></button>
+        <div class="sizes">
+          <i style="width:8px;height:8px"></i>
+          <i style="width:14px;height:14px"></i>
+          <i style="width:22px;height:22px"></i>
+          <span>Smaller to larger footprint</span>
+        </div>
+      </aside>
+      <article class="detail float" id="detail" aria-hidden="true">
+        <div class="detail-kicker">
+          <span id="d-id"></span>
+          <span class="chip" id="d-context"></span>
+        </div>
+        <h2 id="d-name"></h2>
+        <p class="place" id="d-place"></p>
+        <p class="coord"><span id="d-coord"></span><button class="text-btn" id="copy-coord" type="button">Copy coordinates</button></p>
+        <div class="meter">
+          <div class="meter-top"><span>Forest cover</span><strong id="d-forest"></strong></div>
+          <div class="meter-track"><i id="d-forest-bar"></i></div>
+        </div>
+        <dl class="metrics">
+          <div><dt>Footprint</dt><dd id="d-footprint"></dd><small>Mining footprint · ha</small></div>
+          <div><dt>Background BCD</dt><dd id="d-bcd"></dd><small>t C/ha</small></div>
+          <div><dt>Estimated BCL</dt><dd id="d-bcl"></dd><small>t C</small></div>
+          <div><dt>BCLI</dt><dd id="d-bcli"></dd><small>t C/t Cu</small></div>
+        </dl>
+        <div class="actions">
+          <button class="primary" id="btn-imagery" type="button">View imagery</button>
+          <button class="ghost" id="btn-world" type="button">World view</button>
+        </div>
+        <p class="note" id="d-note"></p>
+      </article>
+      <div class="veil" id="veil">
+        <div class="veil-card">
+          <div class="spinner" aria-hidden="true"></div>
+          <strong>Opening the map</strong>
+          <span id="veil-msg">Loading the Esri basemap…</span>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="vendor/leaflet.js"></script>
+  <script>
+    "use strict";
+
+    const motionOk = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const byId = new Map(MINES.map((mine) => [mine.id, mine]));
+
+    const searchEl = document.getElementById("search");
+    const countryEl = document.getElementById("country");
+    const sortEl = document.getElementById("sort");
+    const listEl = document.getElementById("list");
+    const listCountEl = document.getElementById("list-count");
+    const detailEl = document.getElementById("detail");
+    const hintEl = document.getElementById("hint");
+    const veilEl = document.getElementById("veil");
+    const veilMsg = document.getElementById("veil-msg");
+
+    const state = {
+      query: "",
+      country: "",
+      context: "",
+      sort: "bcl",
+      selectedId: null,
+      filtered: MINES.slice(),
+      mapReady: false
+    };
+
+    let mapApi = null;
+    let pending = null;
+
+    function contextLabel(value) {
+      return value === "Forest-context" ? "Forest context" : "Non-forest context";
+    }
+
+    function contextClass(value) {
+      return value === "Forest-context" ? "forest" : "bare";
+    }
+
+    function fmtNumber(value, digits) {
+      return value.toLocaleString("en-US", {
+        maximumFractionDigits: digits,
+        minimumFractionDigits: digits
+      });
+    }
+
+    function fmtHa(value) {
+      const digits = value >= 100 ? 0 : 2;
+      return value.toLocaleString("en-US", { maximumFractionDigits: digits });
+    }
+
+    function fmtBcl(value) {
+      return value.toLocaleString("en-US", { maximumFractionDigits: 0 });
+    }
+
+    function fmtBcli(value) {
+      if (value >= 100) return fmtNumber(value, 1);
+      if (value >= 1) return fmtNumber(value, 2);
+      if (value >= 0.001) return value.toLocaleString("en-US", { maximumFractionDigits: 4 });
+      return value.toExponential(2);
+    }
+
+    function fmtCompact(value) {
+      const abs = Math.abs(value);
+      if (abs >= 1e6) return { num: (value / 1e6).toFixed(2), unit: "million" };
+      if (abs >= 1e3) return { num: (value / 1e3).toFixed(abs >= 1e4 ? 1 : 2), unit: "thousand" };
+      return { num: value.toLocaleString("en-US", { maximumFractionDigits: 0 }), unit: "" };
+    }
+
+    function fmtCarbonShort(value) {
+      if (value >= 1e6) return (value / 1e6).toFixed(2) + " M";
+      if (value >= 1e3) return (value / 1e3).toFixed(value >= 1e4 ? 1 : 2) + " k";
+      return Math.round(value).toLocaleString("en-US");
+    }
+
+    function fmtCoord(lat, lon) {
+      const ns = lat >= 0 ? "N" : "S";
+      const ew = lon >= 0 ? "E" : "W";
+      return Math.abs(lat).toFixed(5) + "° " + ns + ", " + Math.abs(lon).toFixed(5) + "° " + ew;
+    }
+
+    function decimalCoord(mine) {
+      return mine.lat.toFixed(6) + ", " + mine.lon.toFixed(6);
+    }
+
+    function imageryZoom(mine) {
+      const sideM = Math.sqrt(Math.max(mine.footprint, 0.5) * 10000);
+      const resolution = sideM / 240;
+      const zoom = Math.log2((156543.03392 * Math.cos(mine.lat * Math.PI / 180)) / resolution);
+      return Math.max(11, Math.min(16.5, zoom));
+    }
+
+    function readHash() {
+      const match = /^#mine=(\d+)$/.exec(location.hash);
+      return match ? Number(match[1]) : null;
+    }
+
+    function writeHash(id) {
+      const next = id ? "#mine=" + id : location.pathname + location.search;
+      history.replaceState(null, "", next);
+    }
+
+    function sortMines(mines) {
+      const list = mines.slice();
+      const byName = (a, b) => a.name.localeCompare(b.name);
+      list.sort((a, b) => {
+        if (state.sort === "name") return byName(a, b);
+        const delta = b[state.sort] - a[state.sort];
+        return delta || byName(a, b);
+      });
+      return list;
+    }
+
+    function applyFilters() {
+      const query = state.query.trim().toLowerCase();
+      const filtered = MINES.filter((mine) => {
+        if (state.country && mine.country !== state.country) return false;
+        if (state.context && mine.context !== state.context) return false;
+        if (!query) return true;
+        const haystack = (mine.name + " " + mine.country + " " + mine.id).toLowerCase();
+        return haystack.includes(query);
+      });
+      state.filtered = sortMines(filtered);
+      if (state.selectedId && !state.filtered.some((mine) => mine.id === state.selectedId)) {
+        clearSelection(false);
+      }
+      renderStats();
+      renderList();
+      syncContextUi();
+      if (mapApi) mapApi.filter(state.filtered.map((mine) => mine.id));
+    }
+
+    function renderStats() {
+      const mines = state.filtered;
+      const countries = new Set(mines.map((mine) => mine.country));
+      const footprint = mines.reduce((sum, mine) => sum + mine.footprint, 0);
+      const bcl = mines.reduce((sum, mine) => sum + mine.bcl, 0);
+      const forest = mines.filter((mine) => mine.context === "Forest-context").length;
+      const bare = mines.length - forest;
+      const footprintText = fmtCompact(footprint);
+      const bclText = fmtCompact(bcl);
+
+      document.getElementById("stat-mines").textContent = mines.length.toLocaleString("en-US");
+      document.getElementById("stat-countries").textContent = countries.size.toLocaleString("en-US");
+      document.getElementById("stat-footprint").textContent = footprintText.num;
+      document.getElementById("stat-footprint-unit").textContent = (footprintText.unit ? footprintText.unit + " " : "") + "ha footprint";
+      document.getElementById("stat-bcl").textContent = bclText.num;
+      document.getElementById("stat-bcl-unit").textContent = (bclText.unit ? bclText.unit + " " : "") + "t C estimated loss";
+      document.getElementById("stat-footprint").title = fmtHa(footprint) + " ha";
+      document.getElementById("stat-bcl").title = fmtBcl(bcl) + " t C";
+
+      const denom = Math.max(mines.length, 1);
+      document.getElementById("split-forest").style.width = (forest / denom * 100) + "%";
+      document.getElementById("split-bare").style.width = (bare / denom * 100) + "%";
+      document.getElementById("label-forest").textContent = "Forest " + forest.toLocaleString("en-US");
+      document.getElementById("label-bare").textContent = "Non-forest " + bare.toLocaleString("en-US");
+      listCountEl.textContent = mines.length === MINES.length
+        ? "All " + mines.length + " mines"
+        : "Showing " + mines.length + " / " + MINES.length;
+    }
+
+    function statFor(mine) {
+      if (state.sort === "footprint") return { value: fmtHa(mine.footprint), unit: "ha" };
+      if (state.sort === "forest") return { value: mine.forest.toFixed(1) + "%", unit: "forest" };
+      if (state.sort === "name") return { value: "#" + mine.id, unit: "ID" };
+      return { value: fmtCarbonShort(mine.bcl), unit: "t C" };
+    }
+
+    function renderList() {
+      const fragment = document.createDocumentFragment();
+      if (!state.filtered.length) {
+        const empty = document.createElement("p");
+        empty.className = "empty";
+        empty.textContent = "No mines match these filters.";
+        fragment.append(empty);
+      }
+      state.filtered.forEach((mine) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "mine" + (mine.id === state.selectedId ? " is-active" : "");
+        button.dataset.id = String(mine.id);
+        button.setAttribute("role", "listitem");
+        button.setAttribute("aria-pressed", mine.id === state.selectedId ? "true" : "false");
+
+        const dot = document.createElement("i");
+        dot.className = "dot " + contextClass(mine.context);
+
+        const copy = document.createElement("span");
+        const name = document.createElement("span");
+        name.className = "mine-name";
+        name.textContent = mine.name;
+        const meta = document.createElement("span");
+        meta.className = "mine-meta";
+        meta.textContent = mine.country + " · " + contextLabel(mine.context);
+        copy.append(name, meta);
+
+        const stat = statFor(mine);
+        const side = document.createElement("span");
+        side.className = "mine-stat";
+        const value = document.createElement("b");
+        value.textContent = stat.value;
+        const unit = document.createElement("small");
+        unit.textContent = stat.unit;
+        side.append(value, unit);
+
+        button.append(dot, copy, side);
+        button.addEventListener("click", () => selectMine(mine.id, "list"));
+        fragment.append(button);
+      });
+      listEl.replaceChildren(fragment);
+    }
+
+    function markActive(scroll) {
+      const buttons = listEl.querySelectorAll(".mine");
+      let active = null;
+      buttons.forEach((button) => {
+        const on = Number(button.dataset.id) === state.selectedId;
+        button.classList.toggle("is-active", on);
+        button.setAttribute("aria-pressed", on ? "true" : "false");
+        if (on) active = button;
+      });
+      if (scroll && active) active.scrollIntoView({ block: "nearest" });
+    }
+
+    function paintDetail(mine) {
+      document.getElementById("d-id").textContent = "Mine ID " + String(mine.id).padStart(3, "0");
+      const chip = document.getElementById("d-context");
+      chip.textContent = contextLabel(mine.context);
+      chip.className = "chip " + contextClass(mine.context);
+      document.getElementById("d-name").textContent = mine.name;
+      document.getElementById("d-place").textContent = mine.country;
+      document.getElementById("d-coord").textContent = fmtCoord(mine.lat, mine.lon);
+      document.getElementById("d-forest").textContent = mine.forest.toFixed(1) + "%";
+      document.getElementById("d-forest-bar").style.width = Math.max(0, Math.min(100, mine.forest)) + "%";
+
+      const footprint = document.getElementById("d-footprint");
+      footprint.textContent = fmtHa(mine.footprint);
+      footprint.title = mine.footprint.toLocaleString("en-US") + " ha";
+      const bcd = document.getElementById("d-bcd");
+      bcd.textContent = fmtNumber(mine.bcd, mine.bcd >= 100 ? 1 : 2);
+      bcd.title = mine.bcd + " t C/ha";
+      const bcl = document.getElementById("d-bcl");
+      bcl.textContent = fmtBcl(mine.bcl);
+      bcl.title = mine.bcl.toLocaleString("en-US") + " t C";
+      const bcli = document.getElementById("d-bcli");
+      bcli.textContent = fmtBcli(mine.bcli);
+      bcli.title = mine.bcli + " t C/t Cu";
+
+      detailEl.classList.add("is-open");
+      detailEl.setAttribute("aria-hidden", "false");
+      detailEl.closest(".stage").classList.add("has-selection");
+      hintEl.hidden = true;
+      document.getElementById("btn-imagery").disabled = !state.mapReady;
+    }
+
+    function selectMine(id, source) {
+      const mine = byId.get(id);
+      if (!mine) return;
+      state.selectedId = id;
+      paintDetail(mine);
+      markActive(source === "map");
+      writeHash(id);
+      if (mapApi) mapApi.focus(mine);
+      else pending = mine;
+    }
+
+    function clearSelection(flyHome) {
+      state.selectedId = null;
+      detailEl.classList.remove("is-open");
+      detailEl.setAttribute("aria-hidden", "true");
+      detailEl.closest(".stage").classList.remove("has-selection");
+      hintEl.hidden = false;
+      markActive(false);
+      writeHash(null);
+      if (mapApi) {
+        if (flyHome) mapApi.home();
+        else mapApi.dismiss();
+      }
+    }
+
+    function syncContextUi() {
+      document.querySelectorAll(".segments button, .legend button").forEach((button) => {
+        if (!button.dataset || button.dataset.context == null) return;
+        button.classList.toggle("is-active", button.dataset.context === state.context);
+      });
+    }
+
+    function setContext(value) {
+      state.context = state.context === value ? "" : value;
+      applyFilters();
+    }
+
+    function populateCountries() {
+      const counts = new Map();
+      MINES.forEach((mine) => counts.set(mine.country, (counts.get(mine.country) || 0) + 1));
+      const countries = [...counts.keys()].sort((a, b) => counts.get(b) - counts.get(a) || a.localeCompare(b));
+      const all = document.createElement("option");
+      all.value = "";
+      all.textContent = "All countries";
+      countryEl.append(all);
+      countries.forEach((name) => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name + " · " + counts.get(name);
+        countryEl.append(option);
+      });
+    }
+
+    function frameFiltered() {
+      if (!mapApi) return;
+      if (state.filtered.length === 1) {
+        selectMine(state.filtered[0].id, "list");
+        return;
+      }
+      if (state.filtered.length === MINES.length) {
+        clearSelection(true);
+        return;
+      }
+      mapApi.frame(state.filtered);
+    }
+
+    searchEl.addEventListener("input", () => {
+      state.query = searchEl.value;
+      applyFilters();
+    });
+    countryEl.addEventListener("change", () => {
+      state.country = countryEl.value;
+      applyFilters();
+    });
+    sortEl.addEventListener("change", () => {
+      state.sort = sortEl.value;
+      applyFilters();
+    });
+    document.querySelectorAll(".segments button, .legend button").forEach((button) => {
+      button.addEventListener("click", () => setContext(button.dataset.context || ""));
+    });
+    document.getElementById("frame-btn").addEventListener("click", frameFiltered);
+    document.getElementById("btn-world").addEventListener("click", () => clearSelection(true));
+    document.getElementById("btn-imagery").addEventListener("click", () => {
+      const mine = byId.get(state.selectedId);
+      if (mine && mapApi) {
+        mapApi.setBasemap("imagery");
+        mapApi.focus(mine);
+      }
+    });
+    document.getElementById("copy-coord").addEventListener("click", async () => {
+      const mine = byId.get(state.selectedId);
+      if (!mine) return;
+      const text = decimalCoord(mine);
+      try {
+        await navigator.clipboard.writeText(text);
+        document.getElementById("copy-coord").textContent = "Copied";
+      } catch (error) {
+        document.getElementById("copy-coord").textContent = text;
+      }
+      setTimeout(() => {
+        document.getElementById("copy-coord").textContent = "Copy coordinates";
+      }, 1200);
+    });
+    document.querySelectorAll(".basemaps button").forEach((button) => {
+      button.addEventListener("click", () => {
+        if (mapApi) mapApi.setBasemap(button.dataset.basemap);
+      });
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "/" && document.activeElement !== searchEl) {
+        event.preventDefault();
+        searchEl.focus();
+      }
+      if (event.key !== "Escape") return;
+      if (document.activeElement === searchEl && searchEl.value) {
+        searchEl.value = "";
+        state.query = "";
+        applyFilters();
+        return;
+      }
+      if (state.selectedId) clearSelection(true);
+    });
+    window.addEventListener("hashchange", () => {
+      const id = readHash();
+      if (id && id !== state.selectedId) selectMine(id, "map");
+    });
+
+    function showMapError(message) {
+      veilEl.classList.remove("is-gone");
+      veilMsg.textContent = message;
+      const spinner = veilEl.querySelector(".spinner");
+      if (spinner) spinner.remove();
+      document.body.dataset.map = "error";
+    }
+
+    populateCountries();
+    applyFilters();
+
+    function initMap() {
+      if (!window.L) {
+        showMapError("The map library did not load. Refresh the page.");
+        return;
+      }
+      const tiles = {
+        dark: "https://server.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+        darkRef: "https://server.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
+        imagery: "https://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        places: "https://server.arcgisonline.com/arcgis/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+        topo: "https://server.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+      };
+      const map = L.map("view", {
+        zoomControl: true,
+        attributionControl: true,
+        minZoom: 2,
+        maxZoom: 18,
+        worldCopyJump: true,
+        zoomSnap: 0.25
+      });
+      const canvas = L.tileLayer(tiles.dark, { attribution: "Tiles &copy; Esri", maxZoom: 16 }).addTo(map);
+      const canvasRef = L.tileLayer(tiles.darkRef, { attribution: "", maxZoom: 16 }).addTo(map);
+      let imagery = null;
+      let places = null;
+      let topo = null;
+      const minT = Math.sqrt(Math.min.apply(null, MINES.map((mine) => mine.footprint)));
+      const maxT = Math.sqrt(Math.max.apply(null, MINES.map((mine) => mine.footprint)));
+
+      function radius(mine) {
+        const span = Math.max(maxT - minT, 1);
+        return 5 + ((Math.sqrt(mine.footprint) - minT) / span) * 12;
+      }
+
+      function markerStyle(mine, on) {
+        return {
+          radius: on ? radius(mine) + 4 : radius(mine),
+          color: on ? "#fff6e8" : "#1c140d",
+          weight: on ? 3 : 1,
+          fillColor: mine.context === "Forest-context" ? "#3ee6a2" : "#f2a24a",
+          fillOpacity: 0.95
+        };
+      }
+
+      const markers = new Map();
+      const group = L.layerGroup().addTo(map);
+      MINES.forEach((mine) => {
+        const marker = L.circleMarker([mine.lat, mine.lon], markerStyle(mine, false));
+        marker.on("click", () => selectMine(mine.id, "map"));
+        markers.set(mine.id, marker);
+      });
+
+      let current = "dark";
+      const captions = {
+        imagery: "Esri World Imagery",
+        topo: "Esri World Topo",
+        dark: "Esri Dark Gray canvas"
+      };
+
+      function ensure(name) {
+        if (name === "imagery" && !imagery) {
+          imagery = L.tileLayer(tiles.imagery, {
+            attribution: "Tiles &copy; Esri, Maxar, Earthstar Geographics",
+            maxZoom: 19
+          });
+          places = L.tileLayer(tiles.places, { attribution: "", maxZoom: 19 });
+        }
+        if (name === "topo" && !topo) {
+          topo = L.tileLayer(tiles.topo, { attribution: "Tiles &copy; Esri", maxZoom: 19 });
+        }
+      }
+
+      function setBasemap(name) {
+        if (!captions[name]) return;
+        ensure(name);
+        current = name;
+        if (name === "dark") {
+          if (!map.hasLayer(canvas)) canvas.addTo(map);
+          if (!map.hasLayer(canvasRef)) canvasRef.addTo(map);
+        } else {
+          map.removeLayer(canvas);
+          map.removeLayer(canvasRef);
+        }
+        if (topo) {
+          if (name === "topo") topo.addTo(map);
+          else map.removeLayer(topo);
+        }
+        if (imagery) {
+          if (name === "imagery") {
+            imagery.addTo(map);
+            places.addTo(map);
+          } else {
+            map.removeLayer(imagery);
+            map.removeLayer(places);
+          }
+        }
+        document.querySelectorAll(".basemaps button").forEach((button) => {
+          button.classList.toggle("is-active", button.dataset.basemap === name);
+        });
+        updateNote();
+      }
+
+      function updateNote() {
+        const note = document.getElementById("d-note");
+        if (!state.selectedId) return;
+        const scale = Math.round(591657550.5 / Math.pow(2, map.getZoom()));
+        note.textContent = captions[current] + " · about 1:" + scale.toLocaleString("en-US") + ". Imagery detail depends on the public tiles for that location.";
+      }
+
+      function viewPadding() {
+        if (window.innerWidth <= 960) return { paddingTopLeft: [12, 64], paddingBottomRight: [12, 24] };
+        return { paddingTopLeft: [390, 20], paddingBottomRight: [24, 36] };
+      }
+
+      function worldZoom() {
+        map.invalidateSize();
+        const size = map.getSize();
+        const cover = Math.max(
+          Math.log2(Math.max(size.x, 640) / 256),
+          Math.log2(Math.max(size.y, 480) / 256)
+        );
+        return Math.min(5, Math.max(2, cover));
+      }
+
+      function showIds(ids) {
+        const allow = new Set(ids);
+        group.clearLayers();
+        markers.forEach((marker, id) => {
+          if (!allow.has(id)) return;
+          marker.setStyle(markerStyle(byId.get(id), id === state.selectedId));
+          group.addLayer(marker);
+        });
+      }
+
+      function focus(mine) {
+        setBasemap("imagery");
+        markers.forEach((marker, id) => marker.setStyle(markerStyle(byId.get(id), id === mine.id)));
+        const marker = markers.get(mine.id);
+        if (marker) marker.bringToFront();
+        const bounds = L.latLngBounds([mine.lat, mine.lon], [mine.lat, mine.lon]);
+        map.flyToBounds(bounds, Object.assign({
+          maxZoom: imageryZoom(mine),
+          duration: motionOk ? 0.8 : 0
+        }, viewPadding()));
+        map.once("moveend", updateNote);
+      }
+
+      function home() {
+        setBasemap("dark");
+        markers.forEach((marker, id) => marker.setStyle(markerStyle(byId.get(id), false)));
+        map.flyTo([12, 10], worldZoom(), { duration: motionOk ? 0.6 : 0 });
+      }
+
+      function dismiss() {
+        markers.forEach((marker, id) => marker.setStyle(markerStyle(byId.get(id), false)));
+      }
+
+      function frame(mines) {
+        if (!mines.length) return;
+        const bounds = L.latLngBounds(mines.map((mine) => [mine.lat, mine.lon]));
+        map.flyToBounds(bounds.pad(0.4), Object.assign({
+          duration: motionOk ? 0.7 : 0,
+          maxZoom: 7
+        }, state.selectedId ? viewPadding() : {}));
+      }
+
+      mapApi = { focus, home, dismiss, filter: showIds, frame, setBasemap };
+      showIds(state.filtered.map((mine) => mine.id));
+      map.setView([12, 10], 2);
+      requestAnimationFrame(() => {
+        map.invalidateSize();
+        if (!readHash() && !pending) map.setView([12, 10], worldZoom(), { animate: false });
+        state.mapReady = true;
+        document.body.dataset.map = "ready";
+        document.body.dataset.mines = String(MINES.length);
+        document.getElementById("btn-imagery").disabled = false;
+        veilEl.classList.add("is-gone");
+        const initial = pending || (readHash() ? byId.get(readHash()) : null);
+        pending = null;
+        if (initial) selectMine(initial.id, "map");
+      });
+    }
+
+    initMap();
+  </script>
+</body>
+</html>
